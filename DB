@@ -1,0 +1,231 @@
+-- TMEMBRE
+CREATE TABLE TMEMBRE(
+    Idmembre        INT IDENTITY(1,1) PRIMARY KEY,
+    nom             VARCHAR(100) NOT NULL,
+    prenom          VARCHAR(100) NOT NULL,
+    email           VARCHAR(255) NOT NULL,
+    telephone       VARCHAR(20)  NOT NULL,
+    adresse         VARCHAR(255) NOT NULL,
+    ville           VARCHAR(100) NOT NULL,
+    code_postal     VARCHAR(10)  NOT NULL,
+    pays            VARCHAR(100) NOT NULL,
+    mot_de_passe    VARCHAR(255) NOT NULL,
+    actif           BIT          NOT NULL,
+    creation        DATETIME2    NOT NULL,
+    login           DATETIME2    NULL,
+    CONSTRAINT UK_Membre_Email UNIQUE(email)
+);
+
+-- TPOINT_COLLECTE
+CREATE TABLE TPOINT_COLLECTE(
+    Idpoint_collecte   INT IDENTITY(1,1) PRIMARY KEY,
+    nom                VARCHAR(200) NOT NULL,
+    adresse            VARCHAR(255) NOT NULL,
+    actif              BIT          NOT NULL DEFAULT 1,
+    CONSTRAINT UK_Point_Nom_Adresse UNIQUE(nom, adresse)
+);
+
+-- TCRENEAU_COLLECTE
+CREATE TABLE TCRENEAU_COLLECTE(
+    Idcreneau          INT IDENTITY(1,1) PRIMARY KEY,
+    creneau            DATE        NOT NULL,
+    heure_debut        TIME        NOT NULL,
+    heure_fin          TIME        NOT NULL,
+    actif              BIT         NOT NULL DEFAULT 1,
+    Idpoint_collecte   INT         NOT NULL,
+    CONSTRAINT FK_Creneau_Point
+        FOREIGN KEY(Idpoint_collecte) REFERENCES TPOINT_COLLECTE(Idpoint_collecte),
+    CONSTRAINT UK_Creneau_Point_Date_Heure
+        UNIQUE(Idpoint_collecte, creneau, heure_debut, heure_fin)
+);
+
+-- TCATEGORIE
+CREATE TABLE TCATEGORIE(
+    Idcategorie    INT IDENTITY(1,1) PRIMARY KEY,
+    nom            VARCHAR(100) NOT NULL,
+    description    VARCHAR(MAX) NULL,
+    actif          BIT          NOT NULL,
+    CONSTRAINT UK_Categorie_Nom UNIQUE(nom)
+);
+
+-- TPRODUIT
+CREATE TABLE TPRODUIT(
+    Idproduit      INT IDENTITY(1,1) PRIMARY KEY,
+    nom            VARCHAR(200) NOT NULL,
+    description    VARCHAR(MAX) NULL,
+    prix_unitaire  DECIMAL(10,2) NOT NULL,
+    unite          VARCHAR(20)   NOT NULL,
+    taux_tva       DECIMAL(5,2)  NULL,
+    stock_actuel   DECIMAL(10,2) NULL,
+    images         VARCHAR(MAX)  NULL, -- JSON possible
+    actif          BIT           NOT NULL DEFAULT 1,
+    BIO_VEGAN_LOCAL_VEGGIE VARCHAR(50) NULL,
+    Idcategorie    INT NOT NULL,
+    CONSTRAINT FK_Produit_Categorie
+        FOREIGN KEY(Idcategorie) REFERENCES TCATEGORIE(Idcategorie)
+);
+
+-- TPROMOTION
+CREATE TABLE TPROMOTION(
+    Idpromotion      INT IDENTITY(1,1) PRIMARY KEY,
+    nom              VARCHAR(200) NOT NULL,
+    description      VARCHAR(MAX) NULL,
+    type_reduction   VARCHAR(20)  NOT NULL,
+    valeur_reduction DECIMAL(10,2) NOT NULL,
+    date_debut       DATETIME2    NOT NULL,
+    date_fin         DATETIME2    NOT NULL,
+    actif            BIT          NOT NULL
+);
+
+-- TCOMMANDE
+CREATE TABLE TCOMMANDE(
+    Idcommande      INT IDENTITY(1,1) PRIMARY KEY,
+    numero          VARCHAR(50)  NOT NULL,
+    statut          VARCHAR(20)  NOT NULL,
+    montant_ht      DECIMAL(10,2) NOT NULL,
+    montant_tva     DECIMAL(10,2) NOT NULL,
+    montant_ttc     DECIMAL(10,2) NOT NULL,
+    paye            BIT          NOT NULL DEFAULT 0,
+    paiement        DATETIME2    NULL,
+    commande        DATETIME2    NULL,
+    retrait_prevu   DATETIME2    NOT NULL,
+    annulation      DATETIME2    NULL,
+    Idcreneau       INT          NOT NULL,
+    Idmembre        INT          NOT NULL,
+    CONSTRAINT UK_Commande_Numero UNIQUE(numero),
+    CONSTRAINT FK_Commande_Creneau
+        FOREIGN KEY(Idcreneau) REFERENCES TCRENEAU_COLLECTE(Idcreneau),
+    CONSTRAINT FK_Commande_Membre
+        FOREIGN KEY(Idmembre) REFERENCES TMEMBRE(Idmembre)
+);
+
+-- TLIGNE_COMMANDE
+CREATE TABLE TLIGNE_COMMANDE(
+    Idligne_commande   INT IDENTITY(1,1) PRIMARY KEY,
+    quantite           DECIMAL(10,2) NOT NULL,
+    prix_unitaire      DECIMAL(10,2) NOT NULL,
+    taux_tva           DECIMAL(5,2)  NOT NULL,
+    montant_ligne_ht   DECIMAL(10,2) NOT NULL,
+    montant_ligne_ttc  DECIMAL(10,2) NOT NULL,
+    Idproduit          INT NOT NULL,
+    Idcommande         INT NOT NULL,
+    CONSTRAINT FK_Ligne_Produit
+        FOREIGN KEY(Idproduit) REFERENCES TPRODUIT(Idproduit),
+    CONSTRAINT FK_Ligne_Commande
+        FOREIGN KEY(Idcommande) REFERENCES TCOMMANDE(Idcommande)
+);
+
+-- TADMINISTRATEUR
+CREATE TABLE TADMINISTRATEUR(
+    Idadministrateur   INT IDENTITY(1,1) PRIMARY KEY,
+    nom                VARCHAR(100) NOT NULL,
+    prenom             VARCHAR(100) NOT NULL,
+    email              VARCHAR(255) NOT NULL,
+    mot_de_passe       VARCHAR(255) NOT NULL,
+    actif              BIT          NOT NULL,
+    creation           DATETIME2    NOT NULL,
+    derniere_connexion DATETIME2    NOT NULL,
+    CONSTRAINT UK_Admin_Email UNIQUE(email)
+);
+
+-- TAUDIT
+CREATE TABLE TAUDIT(
+    Idaudit         INT IDENTITY(1,1) PRIMARY KEY,
+    nom_utilisateur VARCHAR(200) NOT NULL,
+    action          VARCHAR(50)  NOT NULL,
+    table_cible     VARCHAR(100) NULL,
+    id_cible        INT          NULL,
+    description     VARCHAR(MAX) NULL,
+    adresse_ip      VARCHAR(45)  NULL,
+    niveau_critique VARCHAR(50)  NOT NULL,
+    date_action     DATETIME2    NOT NULL,
+    Idmembre        INT          NULL,
+    Idadministrateur INT         NULL,
+    CONSTRAINT FK_Audit_Membre
+        FOREIGN KEY(Idmembre) REFERENCES TMEMBRE(Idmembre),
+    CONSTRAINT FK_Audit_Admin
+        FOREIGN KEY(Idadministrateur) REFERENCES TADMINISTRATEUR(Idadministrateur)
+);
+
+-- TDEMANDE_ADHESION
+CREATE TABLE TDEMANDE_ADHESION(
+    Iddemande        INT IDENTITY(1,1) PRIMARY KEY,
+    nom              VARCHAR(100) NOT NULL,
+    prenom           VARCHAR(100) NOT NULL,
+    email            VARCHAR(255) NOT NULL,
+    telephone        VARCHAR(20)  NOT NULL,
+    adresse          VARCHAR(255) NOT NULL,
+    ville            VARCHAR(100) NOT NULL,
+    code_postal      VARCHAR(10)  NOT NULL,
+    pays             VARCHAR(100) NOT NULL,
+    message          VARCHAR(MAX) NULL,
+    message_refus    VARCHAR(MAX) NULL,
+    statut           VARCHAR(20)  NOT NULL,
+    soumission       DATETIME2    NOT NULL,
+    traitement       DATETIME2    NOT NULL,
+    Idadministrateur INT          NOT NULL,
+    CONSTRAINT FK_Demande_Admin
+        FOREIGN KEY(Idadministrateur) REFERENCES TADMINISTRATEUR(Idadministrateur)
+);
+
+-- TMOUVEMENT_STOCK
+CREATE TABLE TMOUVEMENT_STOCK(
+    Idmouvement      INT IDENTITY(1,1) PRIMARY KEY,
+    type_mouvement   VARCHAR(20)  NOT NULL,
+    quantite         DECIMAL(10,2) NOT NULL,
+    stock_avant      DECIMAL(10,2) NOT NULL,
+    stock_apres      DECIMAL(10,2) NOT NULL,
+    mouvement        DATETIME2    NOT NULL,
+    Idcommande       INT          NULL,
+    Idproduit        INT          NOT NULL,
+    Idadministrateur INT          NOT NULL,
+    CONSTRAINT FK_Mvt_Commande
+        FOREIGN KEY(Idcommande) REFERENCES TCOMMANDE(Idcommande),
+    CONSTRAINT FK_Mvt_Produit
+        FOREIGN KEY(Idproduit) REFERENCES TPRODUIT(Idproduit),
+    CONSTRAINT FK_Mvt_Admin
+        FOREIGN KEY(Idadministrateur) REFERENCES TADMINISTRATEUR(Idadministrateur)
+);
+
+-- TEMAIL
+CREATE TABLE TEMAIL(
+    Idemail           INT IDENTITY(1,1) PRIMARY KEY,
+    type_email        VARCHAR(20)  NOT NULL,
+    destinataire      VARCHAR(255) NOT NULL,
+    sujet             VARCHAR(500) NOT NULL,
+    corps             VARCHAR(MAX) NOT NULL,
+    envoi_reussi      BIT          NULL,
+    envoi             DATETIME2    NULL,
+    tentative_reenvoi DATETIME2    NULL,
+    Idmembre          INT          NULL,
+    Idcommande        INT          NULL,
+    Iddemande         INT          NULL,
+    CONSTRAINT FK_Email_Membre
+        FOREIGN KEY(Idmembre) REFERENCES TMEMBRE(Idmembre),
+    CONSTRAINT FK_Email_Commande
+        FOREIGN KEY(Idcommande) REFERENCES TCOMMANDE(Idcommande),
+    CONSTRAINT FK_Email_Demande
+        FOREIGN KEY(Iddemande) REFERENCES TDEMANDE_ADHESION(Iddemande)
+);
+
+-- TPROMOTION_PRODUIT (table de jointure produit-promotion)
+CREATE TABLE TPROMOTION_PRODUIT(
+    Idproduit   INT NOT NULL,
+    Idpromotion INT NOT NULL,
+    PRIMARY KEY(Idproduit, Idpromotion),
+    CONSTRAINT FK_PromoProd_Produit
+        FOREIGN KEY(Idproduit) REFERENCES TPRODUIT(Idproduit),
+    CONSTRAINT FK_PromoProd_Promotion
+        FOREIGN KEY(Idpromotion) REFERENCES TPROMOTION(Idpromotion)
+);
+
+-- TPROMOTION_CATEGORIE (table de jointure categorie-promotion)
+CREATE TABLE TPROMOTION_CATEGORIE(
+    Idcategorie INT NOT NULL,
+    Idpromotion INT NOT NULL,
+    PRIMARY KEY(Idcategorie, Idpromotion),
+    CONSTRAINT FK_PromoCat_Categorie
+        FOREIGN KEY(Idcategorie) REFERENCES TCATEGORIE(Idcategorie),
+    CONSTRAINT FK_PromoCat_Promotion
+        FOREIGN KEY(Idpromotion) REFERENCES TPROMOTION(Idpromotion)
+);
